@@ -7,46 +7,58 @@
 #include <cstdlib>
 #include <ctime>
 
+// Constants for screen dimensions
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
 
+// Pointers to SDL window and renderer
 SDL_Window* gWindow = nullptr;
 SDL_Renderer* gRenderer = nullptr;
 
+// Constants for map dimensions
 const int MAP_WIDTH = 8;
 const int MAP_HEIGHT = 8;
-int worldMap[MAP_WIDTH][MAP_HEIGHT];
+int worldMap[MAP_WIDTH][MAP_HEIGHT]; // 2D array to represent the game world
 
+// Player variables
 float playerX = 4.5; // Initial player position
 float playerY = 4.5;
 float playerAngle = 0.0; // Initial player angle
 float playerSpeed = 0.1; // Player movement speed
 float rotationSpeed = 0.05; // Player rotation speed
 
+// Flags to control drawing options
 bool drawMapEnabled = true;
 bool rainEnabled = false; // Flag to control rain
 
+// Pointers to SDL textures
 SDL_Texture* wallTexture = nullptr;
 SDL_Texture* floorTexture = nullptr;
 SDL_Texture* ceilingTexture = nullptr;
 SDL_Texture* weaponTexture = nullptr;
 SDL_Texture* raindropTexture = nullptr;
 
+// Structure to represent a raindrop
 struct Raindrop {
 	float x;
 	float y;
 	float speed;
 };
 
+// Vector to store raindrops
 std::vector<Raindrop> raindrops;
 
+// Function prototypes
+// Function to initialize SDL subsystems and load textures
 void initializeSDL() {
+	// Initialize SDL video subsystem
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		std::cerr << "SDL initialization failed: " << SDL_GetError() << std::endl;
 		SDL_Quit();
 		exit(EXIT_FAILURE);
 	}
 
+	// Create SDL window
 	gWindow = SDL_CreateWindow("Raycasting Example", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 	if (gWindow == nullptr) {
 		std::cerr << "Window creation failed: " << SDL_GetError() << std::endl;
@@ -54,6 +66,7 @@ void initializeSDL() {
 		exit(EXIT_FAILURE);
 	}
 
+	// Create SDL renderer
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	if (gRenderer == nullptr) {
 		std::cerr << "Renderer creation failed: " << SDL_GetError() << std::endl;
@@ -62,9 +75,11 @@ void initializeSDL() {
 		exit(EXIT_FAILURE);
 	}
 
+	// Set renderer draw color
 	SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 255);
 	SDL_RenderClear(gRenderer);
 
+	// Initialize SDL_image subsystem and load textures
 	int imgFlags = IMG_INIT_PNG;
 	if (!(IMG_Init(imgFlags) & imgFlags)) {
 		std::cerr << "SDL_image initialization failed: " << IMG_GetError() << std::endl;
@@ -81,6 +96,7 @@ void initializeSDL() {
 	raindropTexture = loadTexture("raindrop_texture.png");
 }
 
+// Function to close SDL subsystems and free textures
 void closeSDL() {
 	SDL_DestroyTexture(wallTexture);
 	SDL_DestroyTexture(floorTexture);
@@ -95,6 +111,7 @@ void closeSDL() {
 	SDL_Quit();
 }
 
+// Function to load texture from file
 SDL_Texture* loadTexture(const std::string& path) {
 	SDL_Texture* texture = nullptr;
 
@@ -113,11 +130,13 @@ SDL_Texture* loadTexture(const std::string& path) {
 	return texture;
 }
 
+// Function to render texture at specified position and dimensions
 void renderTexture(SDL_Texture* texture, int x, int y, int width, int height) {
 	SDL_Rect destinationRect = {x, y, width, height};
 	SDL_RenderCopy(gRenderer, texture, nullptr, &destinationRect);
 }
 
+// Function to handle input events
 void handleInput(SDL_Event& e) {
 	if (e.type == SDL_QUIT) {
 		closeSDL();
@@ -173,6 +192,7 @@ void handleInput(SDL_Event& e) {
 	}
 }
 
+// Function to check for collision with walls
 bool isCollision(float x, float y) {
 	int cellX = static_cast<int>(x);
 	int cellY = static_cast<int>(y);
@@ -180,6 +200,7 @@ bool isCollision(float x, float y) {
 	return worldMap[cellX][cellY] == 1;
 }
 
+// Function to generate new raindrops
 void generateRaindrops() {
 	// Generate a new raindrop at random x position
 	float randomX = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * SCREEN_WIDTH;
@@ -187,6 +208,7 @@ void generateRaindrops() {
 	raindrops.push_back(newRaindrop);
 }
 
+// Function to move raindrops down the screen and remove those outside the screen
 void moveRaindrops() {
 	for (auto& raindrop : raindrops) {
 		raindrop.y += raindrop.speed;
@@ -198,6 +220,7 @@ void moveRaindrops() {
 	}
 }
 
+// Function to draw raindrops
 void drawRaindrops() {
 	SDL_SetRenderDrawColor(gRenderer, 0, 0, 255, 255); // Blue color for raindrops
 
@@ -206,6 +229,7 @@ void drawRaindrops() {
 	}
 }
 
+// Function to draw the game world map
 void drawMap() {
 	for (int x = 0; x < MAP_WIDTH; ++x) {
 		for (int y = 0; y < MAP_HEIGHT; ++y) {
@@ -227,6 +251,7 @@ void drawMap() {
 	}
 }
 
+// Function to draw the player's line of sight
 void drawPlayerLineOfSight() {
 	SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
 
@@ -240,6 +265,7 @@ void drawPlayerLineOfSight() {
 	SDL_RenderDrawLine(gRenderer, static_cast<int>(lineX), static_cast<int>(lineY), static_cast<int>(lineEndX), static_cast<int>(lineEndY));
 }
 
+// Function to draw the player's weapon
 void drawWeapon() {
 	SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
 
@@ -249,17 +275,21 @@ void drawWeapon() {
 	renderTexture(weaponTexture, static_cast<int>(weaponX), static_cast<int>(weaponY), 50, 50);
 }
 
+// Main function
 int main(int argc, char* argv[]) {
+	// Command-line argument check
 	if (argc != 2) {
 		std::cerr << "Usage: " << argv[0] << " <map_file_path>" << std::endl;
 		return EXIT_FAILURE;
 	}
 
+	// Load map from file
 	std::string mapFilePath = argv[1];
 	if (!loadMapFromFile(mapFilePath)) {
 		return EXIT_FAILURE;
 	}
 
+	// Initialize SDL
 	initializeSDL();
 
 	SDL_Event e;
@@ -268,34 +298,41 @@ int main(int argc, char* argv[]) {
 	// Seed for random number generation
 	std::srand(static_cast<unsigned>(std::time(0)));
 
+	// Main loop
 	while (!quit) {
 		while (SDL_PollEvent(&e) != 0) {
 			handleInput(e);
 		}
 
+		// Clear the renderer
 		SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 255);
 		SDL_RenderClear(gRenderer);
 
+		// Draw map if enabled
 		if (drawMapEnabled) {
 			drawMap();
 		}
 
+		// Draw player and player's line of sight
 		SDL_SetRenderDrawColor(gRenderer, 255, 0, 0, 255);
 		SDL_Rect playerRect = {playerX * (SCREEN_WIDTH / MAP_WIDTH), playerY * (SCREEN_HEIGHT / MAP_HEIGHT), 5, 5};
 		SDL_RenderFillRect(gRenderer, &playerRect);
 
 		drawPlayerLineOfSight();
-		drawWeapon();
+		drawWeapon(); // Draw weapon
 
+		// Generate, move, and draw raindrops if rain is enabled
 		if (rainEnabled) {
 			generateRaindrops();
 			moveRaindrops();
 			drawRaindrops();
 		}
 
+		// Present the renderer
 		SDL_RenderPresent(gRenderer);
 	}
 
+	// Clean up resources and quit SDL
 	closeSDL();
 
 	return 0;
